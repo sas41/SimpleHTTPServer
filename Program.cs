@@ -11,27 +11,38 @@ namespace SimpleHTTPServer
     {
         static void Main(string[] args)
         {
-            List<string> prefixes = new List<string> { "http://localhost:8080/" };
+            //List<string> prefixes = new List<string> {  };
 
-            HTTPServer myServer = new HTTPServer(prefixes, "D:\\HTTP", "\\index.html");
-
-            string command;
-
+            HTTPServer myServer = null;
+            
             while (true)
             {
-                command = Console.ReadLine();
+                List<string> inputList = Console.ReadLine().Split().ToList();
 
-                if (command == "quit")
+                if (inputList[0] == "quit")
                 {
                     break;
                 }
-                else if(command == "start")
+                else if(inputList[0] == "start")
                 {
+                    if (inputList.Count > 4)
+                    {
+                        // "D:\\HTTP" "/index.html" "/404.html" "http://localhost:8080/"
+                        myServer = new HTTPServer(inputList.Skip(4).ToList(), inputList[1], inputList[2], inputList[3]);
+                    }
+                    else
+                    {
+                        myServer = new HTTPServer(new List<string> { "http://localhost:8080/" }, "D:\\HTTP", "/index.html", "/404.html");
+                    }
+
                     myServer.StartListening();
                 }
-                else if (command == "stop")
+                else if (inputList[0] == "stop")
                 {
-                    myServer.StopListening();
+                    if (myServer != null)
+                    {
+                        myServer.StopListening();
+                    }
                 }
             }
         }

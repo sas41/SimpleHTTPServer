@@ -12,17 +12,17 @@ namespace SimpleHTTPServer
         private List<string> aliases;
         private string rootPath;
         private string indexFile;
+        private string error404File;
 
         public List<string> Aliases { get => aliases; set => aliases = value; }
         public string RootPath { get => rootPath; set => rootPath = value; }
         public string IndexFile { get => indexFile; set => indexFile = value; }
+        public string Error404File { get => error404File; set => error404File = value; }
 
         HttpListener listener;
         private bool isLive = false;
 
-
-
-        public HTTPServer(List<string> aliases,string rootPath, string indexFile)
+        public HTTPServer(List<string> aliases,string rootPath, string indexFile, string error404File = "")
         {
             Aliases = new List<string>();
             foreach (var alias in aliases)
@@ -31,6 +31,7 @@ namespace SimpleHTTPServer
             }
             RootPath = rootPath;
             IndexFile = indexFile;
+            Error404File = error404File;
         }
 
         public void StartListening()
@@ -74,53 +75,80 @@ namespace SimpleHTTPServer
 
         public void OnContextRequest(IAsyncResult result)
         {
-            //The GetContext method blocks while waiting for a request.
-            //We use EndGetContext and BeginGetContext instead.
-            //As soon as we are done with the last context, we should be listening for the next.
-            //That way we can reply to many at the same time.
-            HttpListenerContext context;
-
             try
             {
-                context = listener.EndGetContext(result);
+                //The GetContext method blocks while waiting for a request.
+                //We use EndGetContext and BeginGetContext instead.
+                //As soon as we are done with the last context, we should be listening for the next.
+                //That way we can reply to many at the same time.
+                HttpListenerContext context = listener.EndGetContext(result);
+                listener.BeginGetContext(OnContextRequest, listener);
+
+                //Simulate Delay
+                //Thread.Sleep(5000);
+
+                //Get the specifics of the request and extract the target file/directory.
+                HttpListenerRequest request = context.Request;
+                string target = request.RawUrl;
+
+                // Obtain a response object.
+                HttpListenerResponse response = context.Response;
+
+                //If no file/path is requested, serve the index file.
+                if (target == "/")
+                {
+                    target = IndexFile;
+                }
+
+                string path = RootPath + target;
+
+                Log("Target Path: " + target);
+                Log("Final Path: " + path);
+
+                string responseString = "";
+
+                if (File.Exists(path))
+                {
+                    responseString = FetchFile(path);
+                }
+                else if(File.Exists(RootPath + Error404File))
+                {
+                    response.Redirect("//" + request.UserHostName + Error404File);
+                    response.Close();
+                    return;
+                }
+                else
+                {
+                    responseString = "Error Code: 404, Page not Found!";
+                }
+
+                // Get a response stream and write the response to it.
+                byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
+
+                response.ContentLength64 = buffer.Length;
+                response.OutputStream.Write(buffer, 0, buffer.Length);
+                response.OutputStream.Close();
             }
             catch (Exception)
             {
                 Log("Listener Stopped, Stopping Thread");
                 return;
             }
+        }
 
-            listener.BeginGetContext(OnContextRequest, listener);
-
-            //Simulate Delay
-            //Thread.Sleep(5000);
-
-            //Get the specifics of the request and extract the target file/directory.
-            HttpListenerRequest request = context.Request;
-            string target = request.RawUrl.Replace("/", "\\");
-
-            //If no file/path is requested, serve the index file.
-            if (target == "\\")
-            {
-                target = IndexFile;
-            }
-
-            string path = RootPath + target;
-            Log("Target Path: " + target);
-            Log("Final Path: " + path);
-
-            Log("Opening File...");
-            StreamReader sr;
-            string responseString = "";
+        private string FetchFile(string pathToFile, bool default404 = false)
+        {
+            string file = "";
 
             try
             {
-                sr = new StreamReader(path);
+                Log("Opening File...");
+                StreamReader sr = new StreamReader(pathToFile);
 
                 Log("Reading File...");
                 while (!sr.EndOfStream)
                 {
-                    responseString += sr.ReadLine() + Environment.NewLine;
+                    file += sr.ReadLine() + Environment.NewLine;
                 }
                 Log("Done!");
 
@@ -129,30 +157,23 @@ namespace SimpleHTTPServer
             }
             catch (Exception)
             {
-                Log("File Read Error: " + path);
-                responseString = "404, File not Found!";
+                Log("File Read Error: " + pathToFile);
             }
 
-
-            // Obtain a response object.
-            HttpListenerResponse response = context.Response;
-
-            byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
-
-            // Get a response stream and write the response to it.
-            response.ContentLength64 = buffer.Length;
-            System.IO.Stream output = response.OutputStream;
-            output.Write(buffer, 0, buffer.Length);
-
-            // You must close the output stream.
-            output.Close();
+            return file;
         }
-
 
         public void StopListening()
         {
-            isLive = false;
-            listener.Stop();
+            if (isLive)
+            {
+                isLive = false;
+                listener.Stop();
+            }
+            else
+            {
+                Log("Listener has not been started!");
+            }
         }
 
         public void Log(string s)
