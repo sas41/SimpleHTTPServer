@@ -65,12 +65,19 @@ namespace SimpleHTTPServer
                 throw new ArgumentException("Invalid Alias(es)/Prefix(es), Example: http://localhost:8080");
             }
 
-            listener.Start();
-            Log("Listening...");
-            Log("Root Path: " + RootPath);
-            isLive = true;
+            try
+            {
+                listener.Start();
+                Log("Listening...");
+                Log("Root Path: " + RootPath);
+                isLive = true;
 
-            IAsyncResult Result = listener.BeginGetContext(new AsyncCallback(OnContextRequest), listener);
+                IAsyncResult Result = listener.BeginGetContext(new AsyncCallback(OnContextRequest), listener);
+            }
+            catch (Exception)
+            {
+                
+            }
         }
 
         public void OnContextRequest(IAsyncResult result)
