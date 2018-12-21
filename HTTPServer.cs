@@ -38,16 +38,15 @@ namespace SimpleHTTPServer
                 throw new Exception("OS Not Supported!");
             }
 
-
-            listener = new HttpListener();
-            RequestHandler requestHandler = new RequestHandler(listener, this);
-
             if (Properties.Aliases == null || Properties.Aliases.Count() == 0)
             {
                 Logger.Log("You must add an Alias/Prefix!");
                 throw new ArgumentException("You must add an Alias/Prefix!");
             }
 
+            listener = new HttpListener();
+            RequestHandler requestHandler = new RequestHandler(listener, this);
+            
             try
             {
                 foreach (string alias in Properties.Aliases)
@@ -81,7 +80,7 @@ namespace SimpleHTTPServer
             Logger.Log("Root Path: " + Properties.RootPath);
             isLive = true;
 
-            IAsyncResult Result = listener.BeginGetContext(new AsyncCallback(requestHandler.OnContextRequest), listener);
+            IAsyncResult Result = listener.BeginGetContext(requestHandler.OnContextRequest, listener);
 
         }
 

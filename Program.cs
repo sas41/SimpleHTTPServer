@@ -26,15 +26,15 @@ namespace SimpleHTTPServer
                 {
                     if (args.Count() > 5)
                     {
-                        // Example: D:/HTTP /index.html /404.html false http://localhost:8080/
+                        // Example: D:/HTTPServer /index.html /404.html false http://localhost:8080/
                         myServer = new HTTPServer(args.Skip(5).ToList(), args[1], args[2], args[3], bool.Parse(args[4]));
+                        myServer.StartListening();
                     }
                     else
                     {
-                        myServer = new HTTPServer(new List<string>() { "http://sas41.ddns.nbis.net:80/" }, "E:/Servers/Web", "/index.html", "/404.html", false);
+                        Logger.Log("Missing input data!");
+                        Logger.Log("Example: D:/HTTPServer /index.html /404.html false http://localhost:8080/");
                     }
-
-                    myServer.StartListening();
                 }
                 else if(args[0] == "netacl")
                 {
